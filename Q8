@@ -1,0 +1,35 @@
+WITH CountryMedians AS (
+    SELECT
+        country,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY daily_vaccinations) AS median_vaccinations
+    FROM
+        vaccination_data
+    WHERE
+        daily_vaccinations IS NOT NULL
+    GROUP BY
+        country
+),
+ImputedData AS (
+    SELECT
+        vd.country,
+        vd.date,
+        CASE 
+            WHEN vd.daily_vaccinations IS NULL THEN 
+                COALESCE(cm.median_vaccinations, 0)
+            ELSE 
+                vd.daily_vaccinations
+        END AS imputed_vaccinations,
+        vd.vaccines
+    FROM
+        vaccination_data vd
+    LEFT JOIN
+        CountryMedians cm
+    ON
+        vd.country = cm.country
+)
+SELECT 
+    *
+FROM 
+    ImputedData
+ORDER BY 
+    country, date;
